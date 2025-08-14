@@ -191,6 +191,7 @@ Route::post('admin/paket-iklan/proses', 'App\Http\Controllers\Admin\Paket_iklan@
 Route::get('admin/transaksi', 'App\Http\Controllers\Admin\Transaksi@index');
 Route::get('admin/transaksi/confirm/{id}', 'App\Http\Controllers\Admin\Transaksi@confirm');
 Route::get('admin/transaksi/reject/{id}', 'App\Http\Controllers\Admin\Transaksi@reject');
+Route::get('admin/transaksi/unverify/{id}', 'App\Http\Controllers\Admin\Transaksi@unverify');
 
 // Rute untuk menampilkan halaman pembelian paket
 Route::get('admin/paket-iklan/beli-untuk-member', 'App\Http\Controllers\Admin\Paket_iklan@beliUntukMember');
