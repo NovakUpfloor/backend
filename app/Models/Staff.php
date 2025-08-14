@@ -17,7 +17,15 @@ class Staff extends Model
             ->join('provinsi', 'provinsi.id', '=', 'staff.id_provinsi','LEFT')
             ->join('kabupaten', 'kabupaten.id', '=', 'staff.id_kabupaten','LEFT')
             ->join('kecamatan', 'kecamatan.id', '=', 'staff.id_kecamatan','LEFT')
-            ->select('staff.*', 'kategori_staff.slug_kategori_staff', 'kategori_staff.nama_kategori_staff', 'provinsi.nama as nama_provinsi', 'kabupaten.nama as nama_kabupaten', 'kecamatan.nama as nama_kecamatan')
+            // Join to get the latest confirmed transaction for each staff
+            ->leftJoin('transaksi_paket', function ($join) {
+                $join->on('staff.id_staff', '=', 'transaksi_paket.id_staff')
+                    ->where('transaksi_paket.status_pembayaran', '=', 'confirmed')
+                    ->whereRaw('transaksi_paket.id = (SELECT MAX(id) FROM transaksi_paket WHERE id_staff = staff.id_staff AND status_pembayaran = "confirmed")');
+            })
+            ->leftJoin('paket_iklan', 'transaksi_paket.paket_id', '=', 'paket_iklan.id')
+            ->select('staff.*', 'kategori_staff.nama_kategori_staff', 'paket_iklan.nama_paket')
+            ->orderBy('staff.urutan','ASC')
             ->orderBy('staff.id_staff','DESC')
             ->get();
         return $query;

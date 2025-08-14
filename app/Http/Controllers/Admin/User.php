@@ -222,14 +222,28 @@ class User extends Controller
             return redirect('login')->with(['warning' => 'Waktu pendaftaran Anda sudah berakhir (expired). Silakan daftar kembali.']);
         }
 
-        // Jika valid, pindahkan data ke tabel users
-        DB::table('users')->insert([
+        // Jika valid, pindahkan data ke tabel users dan dapatkan ID-nya
+        $newUserId = DB::table('users')->insertGetId([
             'nama'          => $verification_data->nama,
             'email'         => $verification_data->email,
             'username'      => $verification_data->username,
             'password'      => $verification_data->password,
             'gambar'        => $verification_data->gambar,
             'akses_level'   => 'User',
+            'created_at'    => now(),
+            'updated_at'    => now()
+        ]);
+
+        // Buat entri staff baru untuk user ini
+        DB::table('staff')->insert([
+            'id_user'           => $newUserId,
+            'nama_staff'        => $verification_data->nama,
+            'email'             => $verification_data->email,
+            'status_staff'      => 'Tidak', // Set status default ke "Tidak"
+            'slug_staff'        => Str::slug($verification_data->nama, '-'),
+            'id_kategori_staff' => 1, // Asumsi default kategori staff adalah 1
+            'created_at'        => now(),
+            'updated_at'        => now()
         ]);
 
         // Hapus data dari tabel verifikasi

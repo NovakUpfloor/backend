@@ -49,55 +49,33 @@ class Transaksi extends Controller
             return redirect('admin/transaksi')->with(['warning' => 'Data paket iklan tidak ditemukan.']);
         }
 
-        $user = DB::table('users')->where('id_user', $transaksi->user_id)->first();
-
-        // --- AWAL LOGIKA BARU ---
-
-        // 1. Cek & Buat Profil Staff jika belum ada
-        $staff = DB::table('staff')->where('id_user', $user->id_user)->first();
-
+        $staff = DB::table('staff')->where('id_user', $transaksi->user_id)->first();
         if(!$staff) {
-            // Jika staff belum ada, buat baru dengan data dasar
-            DB::table('staff')->insert([
-                'id_user'           => $user->id_user,
-                'nama_staff'        => $user->nama,
-                'email'             => $user->email,
-                'status_staff'      => 'Aktif',
-                'tanggal_gabung'    => now(),
-                'total_kuota_iklan' => DB::raw('total_kuota_iklan + ' . $paket->kuota_iklan),
-                'sisa_kuota'        => DB::raw('sisa_kuota + ' . $paket->kuota_iklan),
-                'paket_id'          => $paket->id
-            ]);
-
-            $staff = DB::table('staff')->where('id_user', $user->id_user)->first();
-
-            DB::table('transaksi_paket')->where('id', $id)->update([
-                'id_staff'          => $staff->id_staff,
-                'status_pembayaran' => 'confirmed',
-                'dikonfirmasi_oleh' => Session::get('id_user'),
-                'tanggal_konfirmasi' => now()
-            ]);
-        }else{
-            // 2. Update kuota di tabel staff
-            DB::table('staff')->where('id_user', $user->id_user)->update([
-                'total_kuota_iklan' => DB::raw('total_kuota_iklan + ' . $paket->kuota_iklan),
-                'sisa_kuota'        => DB::raw('sisa_kuota + ' . $paket->kuota_iklan),
-                'paket_id'          => $paket->id
-            ]);
-
-            // 3. Update status transaksi
-            DB::table('transaksi_paket')->where('id', $id)->update([
-                'status_pembayaran' => 'confirmed',
-                'dikonfirmasi_oleh' => Session::get('id_user'),
-                'tanggal_konfirmasi' => now()
-            ]);
-
-            // --- AKHIR LOGIKA BARU ---    
+            return redirect('admin/transaksi')->with(['warning' => 'Profil staff untuk user ini tidak ditemukan. Pastikan user telah verifikasi email.']);
         }
 
+        // --- LOGIKA BARU SESUAI PERMINTAAN ---
         
+        // 1. Dapatkan urutan terakhir dan tentukan urutan baru
+        $lastOrder = DB::table('staff')->max('urutan');
+        $newOrder = $lastOrder + 1;
 
-        return redirect('admin/transaksi')->with(['sukses' => 'Transaksi berhasil dikonfirmasi. Profil dan kuota member telah diperbarui.']);
+        // 2. Update tabel staff: status, urutan, dan kuota
+        DB::table('staff')->where('id_staff', $staff->id_staff)->update([
+            'status_staff'      => 'Ya',
+            'urutan'            => $newOrder,
+            'total_kuota_iklan' => DB::raw('total_kuota_iklan + ' . $paket->kuota_iklan),
+            'sisa_kuota_iklan'  => DB::raw('sisa_kuota_iklan + ' . $paket->kuota_iklan)
+        ]);
+
+        // 3. Update status transaksi menjadi 'confirmed'
+        DB::table('transaksi_paket')->where('id', $id)->update([
+            'status_pembayaran' => 'confirmed',
+            'dikonfirmasi_oleh' => Session::get('id_user'),
+            'tanggal_konfirmasi' => now()
+        ]);
+
+        return redirect('admin/transaksi')->with(['sukses' => 'Transaksi berhasil dikonfirmasi. Profil staff telah diaktifkan dan kuota diperbarui.']);
     }
 
     /**
@@ -114,5 +92,21 @@ class Transaksi extends Controller
         ]);
 
         return redirect('admin/transaksi')->with(['sukses' => 'Transaksi telah ditolak.']);
+    }
+
+    /**
+     * Menandai pembayaran sebagai tidak terverifikasi.
+     */
+    public function unverify($id)
+    {
+        if(Session::get('username')=="") { return redirect('login')->with(['warning' => 'Mohon maaf, Anda belum login']);}
+
+        DB::table('transaksi_paket')->where('id', $id)->update([
+            'status_pembayaran' => 'unverified',
+            'dikonfirmasi_oleh' => Session::get('id_user'),
+            'tanggal_konfirmasi' => now()
+        ]);
+
+        return redirect('admin/transaksi')->with(['sukses' => 'Transaksi telah ditandai sebagai tidak terverifikasi.']);
     }
 }
