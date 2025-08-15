@@ -18,10 +18,12 @@ class AuthApiController extends Controller
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'nama'     => 'required|string|max:255',
-            'username' => 'required|string|max:255|unique:users,username',
-            'email'    => 'required|string|email|max:255|unique:users,email',
-            'password' => 'required|string|min:6',
+            'nama'              => 'required|string|max:255',
+            'username'          => 'required|string|max:255|unique:users,username',
+            'email'             => 'required|string|email|max:255|unique:users,email',
+            'password'          => 'required|string|min:6',
+            'paket_id'          => 'required|integer|exists:paket_iklan,id',
+            'bukti_pembayaran'  => 'required|image|mimes:jpeg,png,jpg,gif|max:2048', // Validasi bukti pembayaran
         ]);
 
         if ($validator->fails()) {
@@ -38,27 +40,38 @@ class AuthApiController extends Controller
             return response()->json(['message' => 'Email atau username sudah terdaftar dan menunggu verifikasi.'], 422);
         }
 
+        // Handle upload file bukti pembayaran
+        $filePath = null;
+        if ($request->hasFile('bukti_pembayaran')) {
+            $file = $request->file('bukti_pembayaran');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            // Simpan file ke storage/app/public/bukti_pembayaran
+            $filePath = $file->storeAs('public/bukti_pembayaran', $fileName);
+        }
+
         $token = Str::random(60);
 
         DB::table('users_verification')->insert([
-            'nama'          => $request->nama,
-            'email'	        => $request->email,
-            'username'   	=> $request->username,
-            'password'      => Hash::make($request->password), // Gunakan Hash Laravel
-            'token'         => $token,
-            'tanggal_expired' => Carbon::now()->addDays(3),
-            'created_at'    => now(),
-            'updated_at'    => now()
+            'nama'              => $request->nama,
+            'email'	            => $request->email,
+            'username'   	    => $request->username,
+            'password'          => Hash::make($request->password),
+            'paket_id'          => $request->paket_id,
+            'gambar'            => $filePath, // Simpan path file di kolom 'gambar'
+            'token'             => $token,
+            'tanggal_expired'   => Carbon::now()->addDays(3),
+            'created_at'        => now(),
+            'updated_at'        => now()
         ]);
 
-        // Kirim email verifikasi, menggunakan view yang sudah ada
+        // Kirim email verifikasi
         Mail::send('emails.verification', ['token' => $token], function($message) use ($request){
             $message->to($request->email);
             $message->subject('Verifikasi Alamat Email Anda - Waisaka Property');
         });
 
         return response()->json([
-            'message' => 'Pendaftaran berhasil. Silakan cek email Anda untuk link aktivasi.'
+            'message' => 'Pendaftaran berhasil. Silakan cek email Anda untuk link aktivasi. Pembelian Anda akan diproses setelah email terverifikasi.'
         ], 201);
     }
 

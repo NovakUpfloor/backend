@@ -44,6 +44,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         username: event.username,
         email: event.email,
         password: event.password,
+        packageId: event.packageId,
+        paymentProofPath: event.paymentProofPath,
       );
       emit(AuthRegisterSuccess());
     } catch (e) {

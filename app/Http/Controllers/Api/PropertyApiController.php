@@ -35,20 +35,27 @@ class PropertyApiController extends Controller
         DB::table('property_db')->where('id_property', $id)->increment('view_count');
 
         $myproperty = new PropertyModel();
-        $property = $myproperty->detail($id);
+        // Menggunakan query builder untuk join
+        $property = $myproperty->semua_raw()
+                        ->where('property_db.id_property', $id)
+                        ->first();
 
         if (!$property) {
             return response()->json(['success' => false, 'message' => 'Properti tidak ditemukan'], 404);
         }
 
         // Mengambil gambar-gambar terkait
-        $images = DB::table('property_img')->where('id_property', $id)->orderBy('index_img')->get();
+        $images = DB::table('property_img')->where('id_property', $id)->orderBy('index_img')->get()->pluck('gambar');
+
+        // Mengambil data agent/staff
+        $agent = DB::table('staff')->where('id_staff', $property->id_staff)->first();
 
         return response()->json([
             'success' => true,
             'data' => [
                 'property' => $property,
-                'images' => $images
+                'images' => $images,
+                'agent' => $agent
             ]
         ]);
     }

@@ -126,6 +126,25 @@ class _ProfileView extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.history),
+          label: const Text('View Purchase History'),
+          onPressed: () {
+            // TODO: Navigate to Purchase History Screen
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Purchase History screen coming soon!')),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          icon: const Icon(Icons.edit),
+          label: const Text('Edit Profile'),
+          onPressed: () {
+            // TODO: Navigate to Edit Profile Screen
+          },
+        ),
       ],
     );
   }
@@ -135,8 +154,40 @@ class _AdminDashboardView extends StatelessWidget {
   const _AdminDashboardView();
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Admin Management Area'),
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        Text('Admin Tools', style: Theme.of(context).textTheme.headlineSmall),
+        const SizedBox(height: 16),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.check_circle_outline, color: Colors.green),
+            title: const Text('Purchase Confirmations'),
+            subtitle: const Text('Approve or reject new package purchases.'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              // TODO: Navigate to Purchase Confirmation Screen
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Purchase Confirmation screen coming soon!')),
+              );
+            },
+          ),
+        ),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.people_outline, color: Colors.blue),
+            title: const Text('Agent Management'),
+            subtitle: const Text('View and manage all property agents.'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              // TODO: Navigate to Agent Management Screen
+               ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Agent Management screen coming soon!')),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

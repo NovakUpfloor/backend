@@ -30,6 +30,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [AuthApiController::class, 'login']);
 
     // --- Konten Publik ---
+    Route::get('/properties/search', [PropertyApiController::class, 'search']);
     Route::get('/properties', [PropertyApiController::class, 'index']);
     Route::get('/properties/{id}', [PropertyApiController::class, 'show']);
     Route::get('/properties/{id}/share', [PropertyApiController::class, 'getShareableContent']);
@@ -48,32 +49,35 @@ Route::prefix('v1')->group(function () {
         // --- Logout ---
         Route::post('/auth/logout', [AuthApiController::class, 'logout']);
 
-        // --- Rute Dashboard (User & Admin) ---
-        Route::prefix('dashboard')->group(function () {
+        // --- Rute User Panel (Agen/Member) ---
+        Route::prefix('user-panel')->group(function () {
             Route::get('/stats', [UserDashboardApiController::class, 'stats']);
             Route::get('/profile', [UserDashboardApiController::class, 'getProfile']);
             Route::post('/profile', [UserDashboardApiController::class, 'updateProfile']);
-            Route::post('/purchase', [UserDashboardApiController::class, 'purchasePackage']);
+            Route::post('/purchase-new-package', [UserDashboardApiController::class, 'purchasePackage']);
+            Route::get('/purchases', [UserDashboardApiController::class, 'getPurchaseHistory']);
+            Route::post('/purchases/{id}/upload-proof', [UserDashboardApiController::class, 'updatePaymentProof']);
             Route::post('/property', [UserDashboardApiController::class, 'storeProperty']);
         });
 
-        // --- Rute Khusus Admin ---
-        Route::middleware('admin')->prefix('admin')->group(function () {
-            Route::get('/activations', [AdminApiController::class, 'getActivations']);
-            Route::post('/activations/{id}/approve', [AdminApiController::class, 'approveActivation']);
-            Route::get('/members', [AdminApiController::class, 'getMembers']);
-            Route::post('/members/{id_staff}/status', [AdminApiController::class, 'updateStatus']);
-            Route::delete('/members/{id_staff}', [AdminApiController::class, 'deleteMember']);
-        });
-		
-		// --- ROUTE BARU UNTUK FASE 4 ---
-		Route::get('/dashboard/stats', [UserDashboardApiController::class, 'stats']);
-		// --- ROUTE BARU UNTUK PENCARIAN ---
-		Route::get('/properties/search', [PropertyApiController::class, 'search']);
+        // --- Rute Admin Panel ---
+        Route::middleware('admin')->prefix('admin-panel')->group(function () {
+            // Konfirmasi Pembelian
+            Route::get('/purchase-confirmations', [AdminApiController::class, 'getPurchaseConfirmations']);
+            Route::post('/purchase-confirmations/{id}/update-status', [AdminApiController::class, 'updatePurchaseStatus']);
 
-		// Route yang sudah ada
-		Route::get('/properties', [PropertyApiController::class, 'index']);
-		Route::get('/properties/{id}', [PropertyApiController::class, 'show']);
+            // Manajemen Agen
+            Route::get('/agents', [AdminApiController::class, 'getAgents']);
+            Route::post('/agents/{id_staff}/update-status', [AdminApiController::class, 'updateAgentStatus']);
+            Route::delete('/agents/{id_staff}', [AdminApiController::class, 'deleteAgent']);
+
+            // Manajemen Properti
+            Route::get('/agents/{id_staff}/properties', [AdminApiController::class, 'getAgentProperties']);
+            Route::post('/properties/{id_property}/update-status', [AdminApiController::class, 'updatePropertyStatus']);
+
+            // Statistik
+            Route::get('/agents/{id_staff}/stats', [AdminApiController::class, 'getAgentStats']);
+        });
 	
     });
 

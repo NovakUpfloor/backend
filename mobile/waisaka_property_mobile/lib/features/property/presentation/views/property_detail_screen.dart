@@ -1,3 +1,4 @@
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -117,8 +118,15 @@ class _GeminiMicButtonState extends State<_GeminiMicButton> {
   }
 
   void _handleAction(String? action, Property property) {
-    const agentWhatsapp = '6281292758175';
-    const agentPhone = '081292758175';
+    final agentWhatsapp = property.agent?.telepon?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
+    final agentPhone = property.agent?.telepon ?? '';
+
+    if (agentPhone.isEmpty && (action == 'contact_phone' || action == 'contact_whatsapp')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Agent contact information is not available.')),
+      );
+      return;
+    }
 
     switch (action) {
       case 'contact_whatsapp':
@@ -155,20 +163,25 @@ class _PropertyDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const agentWhatsapp = '6281292758175';
-    const agentPhone = '081292758175';
+    // Use dynamic agent info, with fallbacks
+    final agentWhatsapp = property.agent?.telepon?.replaceAll(RegExp(r'[^0-9]'), '') ?? '6281292758175';
+    final agentPhone = property.agent?.telepon ?? '081292758175';
 
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (property.gambar != null)
-            Image.network(
+          // Image Carousel
+          if (property.gallery.isNotEmpty)
+            _ImageCarousel(imageUrls: property.gallery)
+          else if (property.gambar != null)
+             Image.network(
               'https://waisakaproperty.com/assets/upload/property/${property.gambar}',
-              height: 250,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
+              height: 250, width: double.infinity, fit: BoxFit.cover,
+            )
+          else
+            const SizedBox(height: 250, child: Center(child: Icon(Icons.house, size: 60, color: Colors.grey))),
+
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -183,6 +196,7 @@ class _PropertyDetailView extends StatelessWidget {
                 const SizedBox(height: 16),
                 const Divider(),
                 const SizedBox(height: 16),
+                 _SectionTitle(title: 'Details'),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -191,7 +205,16 @@ class _PropertyDetailView extends StatelessWidget {
                      _InfoChip(icon: Icons.square_foot, label: '${property.lb ?? 'N/A'}m²'),
                   ],
                 ),
-                const Divider(),
+                const SizedBox(height: 16),
+                if(property.deskripsi != null && property.deskripsi!.isNotEmpty) ...[
+                  _SectionTitle(title: 'Description'),
+                  Text(property.deskripsi!, style: Theme.of(context).textTheme.bodyLarge),
+                  const SizedBox(height: 24),
+                ],
+
+                _SectionTitle(title: 'Listed By'),
+                _AgentInfoCard(agent: property.agent),
+
                 const SizedBox(height: 24),
                 Row(
                   children: [
@@ -200,7 +223,7 @@ class _PropertyDetailView extends StatelessWidget {
                         icon: const Icon(Icons.call),
                         label: const Text('Call Agent'),
                         onPressed: () => _launchUrl('tel:$agentPhone'),
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12)),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -209,23 +232,11 @@ class _PropertyDetailView extends StatelessWidget {
                         icon: const Icon(Icons.chat),
                         label: const Text('WhatsApp'),
                         onPressed: () => _launchUrl('https://wa.me/$agentWhatsapp?text=Halo, saya tertarik dengan properti ${property.namaProperty}'),
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12)),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                     Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.facebook),
-                        label: const Text('Share'),
-                        onPressed: () => _launchUrl('https://www.facebook.com/sharer/sharer.php?u=https://waisakaproperty.com/properti/${property.id}/${property.namaProperty.replaceAll(' ', '-')}'),
-                      ),
-                    ),
-                  ],
-                )
               ],
             ),
           ),
@@ -240,6 +251,91 @@ class _PropertyDetailView extends StatelessWidget {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       debugPrint('Could not launch $url');
     }
+  }
+}
+
+class _ImageCarousel extends StatelessWidget {
+  final List<String> imageUrls;
+  const _ImageCarousel({required this.imageUrls});
+
+  @override
+  Widget build(BuildContext context) {
+    return CarouselSlider(
+      options: CarouselOptions(
+        height: 250.0,
+        autoPlay: true,
+        viewportFraction: 1.0,
+        enlargeCenterPage: false,
+      ),
+      items: imageUrls.map((imageUrl) {
+        return Builder(
+          builder: (BuildContext context) {
+            return Image.network(
+              'https://waisakaproperty.com/assets/upload/property/$imageUrl',
+              fit: BoxFit.cover,
+              width: double.infinity,
+               errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image, size: 50)),
+            );
+          },
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _AgentInfoCard extends StatelessWidget {
+  final Agent? agent;
+  const _AgentInfoCard({this.agent});
+
+  @override
+  Widget build(BuildContext context) {
+    if (agent == null) {
+      return const Card(child: ListTile(title: Text('Agent info not available.')));
+    }
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 30,
+              backgroundImage: agent!.gambar != null
+                  ? NetworkImage('https://waisakaproperty.com/assets/upload/staff/${agent!.gambar}')
+                  : null,
+              child: agent!.gambar == null ? const Icon(Icons.person, size: 30) : null,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(agent!.nama, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(agent!.email ?? 'No email', style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  const _SectionTitle({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0, top: 16.0),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+      ),
+    );
   }
 }
 

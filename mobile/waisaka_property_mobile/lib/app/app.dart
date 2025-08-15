@@ -78,5 +78,12 @@ final GoRouter _router = GoRouter(
       path: '/dashboard',
       builder: (context, state) => const DashboardScreen(),
     ),
+    GoRoute(
+      path: '/article',
+      builder: (context, state) {
+        final article = state.extra as Article;
+        return ArticleDetailScreen(article: article);
+      },
+    ),
   ],
 );

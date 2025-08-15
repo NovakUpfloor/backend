@@ -15,12 +15,16 @@ class AuthRegisterRequested extends AuthEvent {
   final String username;
   final String email;
   final String password;
+  final int packageId;
+  final String paymentProofPath;
 
   AuthRegisterRequested({
     required this.name,
     required this.username,
     required this.email,
     required this.password,
+    required this.packageId,
+    required this.paymentProofPath,
   });
 }
 

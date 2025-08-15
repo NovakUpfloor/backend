@@ -22,3 +22,10 @@ class HomeLoadFailure extends HomeState {
 
   HomeLoadFailure({required this.error});
 }
+
+class HomeNavigateToSearch extends HomeState {
+  final String? location;
+  final String? type;
+
+  HomeNavigateToSearch({this.location, this.type});
+}

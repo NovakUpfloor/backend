@@ -234,22 +234,42 @@ class User extends Controller
             'updated_at'    => now()
         ]);
 
-        // Buat entri staff baru untuk user ini
-        DB::table('staff')->insert([
+        // Buat entri staff baru untuk user ini dan dapatkan ID-nya
+        $newStaffId = DB::table('staff')->insertGetId([
             'id_user'           => $newUserId,
             'nama_staff'        => $verification_data->nama,
             'email'             => $verification_data->email,
-            'status_staff'      => 'Tidak', // Set status default ke "Tidak"
+            'status_staff'      => 'Tidak', // "Tidak" berarti belum dikonfirmasi oleh admin
             'slug_staff'        => Str::slug($verification_data->nama, '-'),
-            'id_kategori_staff' => 1, // Asumsi default kategori staff adalah 1
+            'id_kategori_staff' => 1, // Asumsi default kategori staff adalah 1 (misal: "Agent Baru")
+            'total_kuota_iklan' => 0,
+            'sisa_kuota_iklan'  => 0,
             'created_at'        => now(),
             'updated_at'        => now()
         ]);
 
+        // Ambil data paket yang dibeli
+        $paket = DB::table('paket_iklan')->where('id', $verification_data->paket_id)->first();
+
+        // Buat entri transaksi untuk pembelian paket
+        if ($paket) {
+            DB::table('transaksi_paket')->insert([
+                'user_id'           => $newUserId,
+                'id_staff'          => $newStaffId,
+                'paket_id'          => $verification_data->paket_id,
+                'kode_transaksi'    => 'WPM-' . strtoupper(Str::random(8)),
+                'status_pembayaran' => 'pending', // Menunggu konfirmasi admin
+                'bukti_pembayaran'  => $verification_data->gambar, // Path dari kolom gambar
+                'created_at'        => now(),
+                'updated_at'        => now()
+            ]);
+        }
+
         // Hapus data dari tabel verifikasi
         DB::table('users_verification')->where('token', $token)->delete();
 
-        return redirect('login')->with(['sukses' => 'Verifikasi berhasil. Akun Anda sudah aktif, silakan login.']);
+        // Redirect ke halaman login dengan pesan sukses yang informatif
+        return redirect('login')->with(['sukses' => 'Verifikasi berhasil! Akun Anda sudah aktif. Silakan login untuk melihat status konfirmasi pembelian paket Anda.']);
     }
 
     // Delete (FUNGSI YANG DIPERBAIKI)

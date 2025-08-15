@@ -1,8 +1,9 @@
-import 'package:flutter/foundation.dart';
+import 'package:waisaka_property_mobile/features/property/data/models/agent.dart';
 
 class Property {
   final int id;
   final String namaProperty;
+  final String? deskripsi;
   final String? tipe;
   final double? harga;
   final int? lt; // Luas Tanah
@@ -11,11 +12,14 @@ class Property {
   final int? kamarMandi;
   final String? namaProvinsi;
   final String? namaKabupaten;
-  final String? gambar; // Assuming the API provides a primary image URL
+  final String? gambar; // Primary image
+  final List<String> gallery;
+  final Agent? agent;
 
   Property({
     required this.id,
     required this.namaProperty,
+    this.deskripsi,
     this.tipe,
     this.harga,
     this.lt,
@@ -25,10 +29,15 @@ class Property {
     this.namaProvinsi,
     this.namaKabupaten,
     this.gambar,
+    required this.gallery,
+    this.agent,
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
-    // Helper to safely parse numbers that might be strings or null
+    final propertyData = json['property'] ?? {};
+    final imagesData = json['images'] as List<dynamic>? ?? [];
+    final agentData = json['agent'] as Map<String, dynamic>?;
+
     double? parseDouble(dynamic value) {
       if (value is double) return value;
       if (value is int) return value.toDouble();
@@ -43,17 +52,20 @@ class Property {
     }
 
     return Property(
-      id: json['id_property'],
-      namaProperty: json['nama_property'] ?? 'No Title',
-      tipe: json['tipe'],
-      harga: parseDouble(json['harga']),
-      lt: parseInt(json['lt']),
-      lb: parseInt(json['lb']),
-      kamarTidur: parseInt(json['kamar_tidur']),
-      kamarMandi: parseInt(json['kamar_mandi']),
-      namaProvinsi: json['nama_provinsi'],
-      namaKabupaten: json['nama_kabupaten'],
-      gambar: json['gambar'], // Assuming 'gambar' is the key for the image URL
+      id: propertyData['id_property'],
+      namaProperty: propertyData['nama_property'] ?? 'No Title',
+      deskripsi: propertyData['isi'],
+      tipe: propertyData['tipe'],
+      harga: parseDouble(propertyData['harga']),
+      lt: parseInt(propertyData['lt']),
+      lb: parseInt(propertyData['lb']),
+      kamarTidur: parseInt(propertyData['kamar_tidur']),
+      kamarMandi: parseInt(propertyData['kamar_mandi']),
+      namaProvinsi: propertyData['nama_provinsi'],
+      namaKabupaten: propertyData['nama_kabupaten'],
+      gambar: propertyData['gambar'],
+      gallery: List<String>.from(imagesData),
+      agent: agentData != null ? Agent.fromJson(agentData) : null,
     );
   }
 }

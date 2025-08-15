@@ -17,6 +17,7 @@ void setupServiceLocator() {
   sl.registerFactory(() => HomeBloc(
         propertyRepository: sl(),
         articleRepository: sl(),
+        geminiRepository: sl(),
       ));
   sl.registerFactory(() => PropertyDetailBloc(propertyRepository: sl()));
   sl.registerFactory(() => GeminiBloc(geminiRepository: sl()));
@@ -31,6 +32,7 @@ void setupServiceLocator() {
         apiClient: sl(),
         secureStorage: sl(),
       ));
+  sl.registerLazySingleton(() => PackageRepository(apiClient: sl()));
 
   // Core & External
   sl.registerLazySingleton(() => ApiClient(secureStorage: sl()));
