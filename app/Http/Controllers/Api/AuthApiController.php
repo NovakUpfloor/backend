@@ -110,5 +110,62 @@ class AuthApiController extends Controller
     {
         $request->user()->currentAccessToken()->delete();
         return response()->json(['message' => 'Logout berhasil.'], 200);
-    }  
+    }
+
+    public function verifyEmail($token)
+    {
+        $verificationData = DB::table('users_verification')->where('token', $token)->first();
+
+        if (!$verificationData) {
+            return response()->json(['message' => 'Token verifikasi tidak valid.'], 404);
+        }
+
+        if (Carbon::now()->gt($verificationData->tanggal_expired)) {
+            DB::table('users_verification')->where('token', $token)->delete();
+            return response()->json(['message' => 'Token verifikasi telah kedaluwarsa.'], 410);
+        }
+
+        try {
+            DB::transaction(function () use ($verificationData) {
+                // Create User
+                $user = User::create([
+                    'nama' => $verificationData->nama,
+                    'email' => $verificationData->email,
+                    'username' => $verificationData->username,
+                    'password' => $verificationData->password, // Password is already hashed
+                    'akses_level' => 'User',
+                ]);
+
+                // Create Staff associated with the User
+                // Assuming a default 'id_kategori_staff' = 1 (e.g., "General Agent")
+                // and default location IDs. These should be updated later via profile editing.
+                DB::table('staff')->insert([
+                    'id_user' => $user->id_user,
+                    'nama_staff' => $user->nama,
+                    'email' => $user->email,
+                    'status_staff' => 'Tidak',
+                    'id_kategori_staff' => 1,
+                    'slug_staff' => Str::slug($user->nama, '-'),
+                    'urutan' => 100, // High number to be at the end
+                    'total_kuota_iklan' => 0,
+                    'sisa_kuota_iklan' => 0,
+                    'id_provinsi' => 0, // Default
+                    'id_kabupaten' => 0, // Default
+                    'id_kecamatan' => 0, // Default
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                // Delete the verification token
+                DB::table('users_verification')->where('token', $token)->delete();
+            });
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Terjadi kesalahan saat aktivasi akun.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+
+        return response()->json(['message' => 'Akun Anda telah berhasil diaktivasi. Silakan login.'], 200);
+    }
 }

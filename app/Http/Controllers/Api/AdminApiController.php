@@ -1,5 +1,4 @@
 <?php
-// File: app/Http/Controllers/Api/AdminApiController.php
 
 namespace App\Http\Controllers\Api;
 
@@ -7,136 +6,146 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 
 class AdminApiController extends Controller
 {
-   /**
-     * Mengambil daftar semua transaksi yang menunggu konfirmasi.
+    /**
+     * Mengambil daftar semua transaksi, bisa difilter by status.
      */
-    public function getActivations()
+    public function getTransactions(Request $request)
     {
-        $pendingTransactions = DB::table('transaksi_paket')
+        $query = DB::table('transaksi_paket')
             ->join('users', 'transaksi_paket.user_id', '=', 'users.id_user')
             ->join('paket_iklan', 'transaksi_paket.paket_id', '=', 'paket_iklan.id')
-            ->select('transaksi_paket.*', 'users.nama as nama_user', 'paket_iklan.nama_paket')
-            ->where('transaksi_paket.status_pembayaran', 'pending')
-            ->orderBy('transaksi_paket.created_at', 'asc')
-            ->get();
+            ->select(
+                'transaksi_paket.id',
+                'transaksi_paket.kode_transaksi',
+                'transaksi_paket.status_pembayaran',
+                'transaksi_paket.bukti_pembayaran',
+                'transaksi_paket.created_at',
+                'users.nama as nama_user',
+                'paket_iklan.nama_paket'
+            )
+            ->orderBy('transaksi_paket.created_at', 'desc');
 
-        return response()->json(['success' => true, 'data' => $pendingTransactions]);
+        if ($request->has('status')) {
+            $query->where('transaksi_paket.status_pembayaran', $request->status);
+        }
+
+        $transactions = $query->get();
+
+        foreach ($transactions as $transaction) {
+            if ($transaction->bukti_pembayaran) {
+                $transaction->bukti_pembayaran_url = asset('storage/' . str_replace('public/', '', $transaction->bukti_pembayaran));
+            } else {
+                $transaction->bukti_pembayaran_url = null;
+            }
+        }
+
+        return response()->json(['data' => $transactions]);
     }
 
     /**
-     * Menyetujui sebuah transaksi dan menambahkan kuota ke user.
+     * Mengubah status sebuah transaksi (confirm, reject, unverified).
      */
-    public function approveActivation(Request $request, $id)
+    public function updateTransactionStatus(Request $request, $id)
     {
-        $adminUserId = $request->user()->id_user;
-
-        $transaksi = DB::table('transaksi_paket')->where('id', $id)->where('status_pembayaran', 'pending')->first();
-        if (!$transaksi) {
-            return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan atau sudah diproses.'], 404);
-        }
-
-        $paket = DB::table('paket_iklan')->where('id', $transaksi->paket_id)->first();
-        if (!$paket) {
-            return response()->json(['success' => false, 'message' => 'Paket iklan terkait tidak ditemukan.'], 404);
-        }
-
-        // Update kuota di tabel staff
-        DB::table('staff')->where('id_user', $transaksi->user_id)->increment('sisa_kuota', $paket->kuota_iklan);
-        DB::table('staff')->where('id_user', $transaksi->user_id)->increment('total_kuota_iklan', $paket->kuota_iklan);
-        
-        // Update status transaksi
-        DB::table('transaksi_paket')->where('id', $id)->update([
-            'status_pembayaran' => 'confirmed',
-            'dikonfirmasi_oleh' => $adminUserId,
-            'tanggal_konfirmasi' => now()
+        $validator = Validator::make($request->all(), [
+            'status' => 'required|string|in:confirmed,rejected,unverified',
         ]);
 
-        return response()->json(['success' => true, 'message' => 'Transaksi berhasil dikonfirmasi dan kuota telah ditambahkan.']);
-    } 
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $newStatus = $request->status;
+        $adminUserId = Auth::id();
+        $transaksi = DB::table('transaksi_paket')->where('id', $id)->first();
+
+        if (!$transaksi) {
+            return response()->json(['message' => 'Transaksi tidak ditemukan.'], 404);
+        }
+
+        if ($transaksi->status_pembayaran === 'confirmed' && $newStatus === 'confirmed') {
+             return response()->json(['message' => 'Transaksi ini sudah pernah dikonfirmasi.'], 409);
+        }
+
+        try {
+            DB::transaction(function () use ($newStatus, $transaksi, $adminUserId, $id) {
+                if ($newStatus === 'confirmed') {
+                    $paket = DB::table('paket_iklan')->where('id', $transaksi->paket_id)->first();
+                    if (!$paket) throw new \Exception('Paket iklan terkait tidak ditemukan.');
+
+                    DB::table('staff')->where('id_user', $transaksi->user_id)->increment('sisa_kuota_iklan', $paket->kuota_iklan);
+                    DB::table('staff')->where('id_user', $transaksi->user_id)->increment('total_kuota_iklan', $paket->kuota_iklan);
+                    DB::table('staff')->where('id_user', $transaksi->user_id)->update(['status_staff' => 'Ya']);
+                }
+                DB::table('transaksi_paket')->where('id', $id)->update([
+                    'status_pembayaran' => $newStatus,
+                    'dikonfirmasi_oleh' => $adminUserId,
+                    'tanggal_konfirmasi' => now()
+                ]);
+            });
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Gagal memperbarui transaksi.', 'error' => $e->getMessage()], 500);
+        }
+
+        return response()->json(['message' => "Status transaksi berhasil diubah menjadi '$newStatus'."]);
+    }
     
     /**
-     * Mengambil daftar semua member (staff).
-     * FUNGSI INI DIPINDAHKAN KE SINI
+     * Mengambil daftar semua agen (staff).
      */
-    public function getMembers()
+    public function getAgents()
     {
-        $members = DB::table('staff')
+        $agents = DB::table('staff')
             ->join('users', 'staff.id_user', '=', 'users.id_user')
             ->select('staff.id_staff', 'staff.nama_staff', 'staff.email', 'staff.status_staff', 'staff.sisa_kuota', 'users.username')
             ->orderBy('staff.nama_staff', 'asc')
             ->get();
-
-        return response()->json(['success' => true, 'data' => $members]);
+        return response()->json(['data' => $agents]);
     }
 
     /**
-     * Mengubah status member (ban/unban).
-     * FUNGSI INI DIPINDAHKAN KE SINI
+     * Mengubah status properti (active/inactive).
      */
-    public function updateStatus(Request $request, $id_staff)
+    public function togglePropertyStatus(Request $request, $id)
     {
-        $status = $request->input('status_staff'); // Harapannya 'Ya' atau 'Tidak'
-
-        if (!in_array($status, ['Ya', 'Tidak'])) {
-            return response()->json(['success' => false, 'message' => 'Status tidak valid. Gunakan "Ya" atau "Tidak".'], 422);
+        $property = DB::table('property_db')->where('id_property', $id);
+        if (!$property->exists()) {
+            return response()->json(['message' => 'Properti tidak ditemukan.'], 404);
         }
-
-        DB::table('staff')->where('id_staff', $id_staff)->update(['status_staff' => $status]);
-
-        return response()->json(['success' => true, 'message' => 'Status member berhasil diperbarui.']);
+        $newStatus = $property->first()->status == 1 ? 0 : 1;
+        $property->update(['status' => $newStatus]);
+        $statusText = $newStatus == 1 ? 'active' : 'inactive';
+        return response()->json(['message' => "Status properti berhasil diubah menjadi $statusText."]);
     }
 
     /**
-     * Menghapus member secara permanen. (Versi API)
-     * FUNGSI INI DIPINDAHKAN KE SINI
+     * Mengambil data analitik dasar.
      */
-    public function deleteMember($id_staff)
+    public function getVisitorAnalytics(Request $request)
     {
-        $staff = DB::table('staff')->where('id_staff', $id_staff)->first();
-
-        if (!$staff) {
-            return response()->json(['success' => false, 'message' => 'Member tidak ditemukan.'], 404);
-        }
-
-        $user = DB::table('users')->where('id_user', $staff->id_user)->first();
-        if (!$user) {
-            DB::table('staff')->where('id_staff', $id_staff)->delete();
-            return response()->json(['success' => true, 'message' => 'Data staff anomali berhasil dihapus.']);
-        }
-
-        // Hapus Properti & Gambar
-        $properties = DB::table('property_db')->where('id_staff', $staff->id_staff)->get();
-        foreach ($properties as $property) {
-            $propertyImages = DB::table('property_img')->where('id_property', $property->id_property)->get();
-            foreach ($propertyImages as $image) {
-                File::delete(public_path('assets/upload/property/' . $image->gambar));
-            }
-            DB::table('property_img')->where('id_property', $property->id_property)->delete();
-        }
-        DB::table('property_db')->where('id_staff', $staff->id_staff)->delete();
+        $perCategory = DB::table('property_db')
+            ->join('kategori_property', 'property_db.id_kategori_property', '=', 'kategori_property.id_kategori_property')
+            ->select('kategori_property.nama_kategori_property as category', DB::raw('SUM(property_db.view_count) as total_views'))
+            ->groupBy('kategori_property.nama_kategori_property')
+            ->orderBy('total_views', 'desc')
+            ->get();
         
-        // Hapus Foto Staff
-        File::delete(public_path('assets/upload/staff/' . $staff->gambar));
-        File::delete(public_path('assets/upload/staff/thumbs/' . $staff->gambar));
+        $perAgent = DB::table('property_db')
+            ->join('staff', 'property_db.id_staff', '=', 'staff.id_staff')
+            ->select('staff.nama_staff as agent_name', DB::raw('SUM(property_db.view_count) as total_views'))
+            ->groupBy('staff.nama_staff')
+            ->orderBy('total_views', 'desc')
+            ->limit(5)
+            ->get();
 
-        // Hapus Transaksi & Bukti Bayar
-        $transactions = DB::table('transaksi_paket')->where('user_id', $user->id_user)->get();
-        foreach ($transactions as $transaction) {
-            File::delete(public_path('assets/upload/bukti/' . $transaction->bukti_pembayaran));
-        }
-        DB::table('transaksi_paket')->where('user_id', $user->id_user)->delete();
-
-        // Hapus Foto Profil User
-        File::delete(public_path('assets/upload/user/' . $user->gambar));
-        File::delete(public_path('assets/upload/user/thumbs/' . $user->gambar));
-
-        // Hapus data dari tabel staff dan users
-        DB::table('staff')->where('id_user', $user->id_user)->delete();
-        DB::table('users')->where('id_user', $user->id_user)->delete();
-
-        return response()->json(['success' => true, 'message' => 'Member beserta semua data terkait berhasil dihapus.']);
+        return response()->json([
+            'per_category' => $perCategory,
+            'top_agents' => $perAgent,
+        ]);
     }
 }

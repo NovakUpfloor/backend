@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthApiController;
 use App\Http\Controllers\Api\PropertyApiController;
 use App\Http\Controllers\Api\BeritaApiController;
+use App\Http\Controllers\Api\DashboardApiController;
 use App\Http\Controllers\Api\PackageApiController;
 use App\Http\Controllers\Api\UserDashboardApiController;
 use App\Http\Controllers\Api\AdminApiController;
@@ -28,6 +29,7 @@ Route::prefix('v1')->group(function () {
     // --- Autentikasi ---
     Route::post('/auth/register', [AuthApiController::class, 'register']);
     Route::post('/auth/login', [AuthApiController::class, 'login']);
+    Route::get('/auth/verify/{token}', [AuthApiController::class, 'verifyEmail']);
 
     // --- Konten Publik ---
     Route::get('/properties', [PropertyApiController::class, 'index']);
@@ -50,11 +52,13 @@ Route::prefix('v1')->group(function () {
 
         // --- Rute Dashboard (User & Admin) ---
         Route::prefix('dashboard')->group(function () {
-            Route::get('/stats', [UserDashboardApiController::class, 'stats']);
-            Route::get('/profile', [UserDashboardApiController::class, 'getProfile']);
-            Route::post('/profile', [UserDashboardApiController::class, 'updateProfile']);
-            Route::post('/purchase', [UserDashboardApiController::class, 'purchasePackage']);
-            Route::post('/property', [UserDashboardApiController::class, 'storeProperty']);
+            Route::post('/purchase-package', [DashboardApiController::class, 'purchasePackage']);
+            Route::get('/my-properties', [DashboardApiController::class, 'getMyProperties']);
+            // Route::get('/stats', [UserDashboardApiController::class, 'stats']);
+            // Route::get('/profile', [UserDashboardApiController::class, 'getProfile']);
+            // Route::post('/profile', [UserDashboardApiController::class, 'updateProfile']);
+            // Route::post('/purchase', [UserDashboardApiController::class, 'purchasePackage']);
+            // Route::post('/property', [UserDashboardApiController::class, 'storeProperty']);
         });
 
         // --- Rute Khusus Admin ---
