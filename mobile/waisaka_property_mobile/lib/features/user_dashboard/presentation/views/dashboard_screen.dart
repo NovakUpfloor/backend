@@ -26,6 +26,15 @@ class _DashboardView extends StatefulWidget {
 class _DashboardViewState extends State<_DashboardView> {
   int _selectedIndex = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    // Ensure we fetch the user profile when the screen is initialized.
+    // The BlocProvider above already does this, but this is a good practice
+    // if the logic were to change.
+    context.read<AuthBloc>().add(FetchUserProfile());
+  }
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -60,18 +69,34 @@ class _DashboardViewState extends State<_DashboardView> {
             if (isAdmin) const BottomNavigationBarItem(icon: Icon(Icons.admin_panel_settings), label: 'Admin'),
           ];
 
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('My Dashboard'),
-              // TODO: Add logout button
-            ),
-            body: widgetOptions.elementAt(_selectedIndex),
-            bottomNavigationBar: BottomNavigationBar(
-              items: navItems,
-              currentIndex: _selectedIndex,
-              selectedItemColor: Colors.blue[800],
-              unselectedItemColor: Colors.grey,
-              onTap: _onItemTapped,
+          return BlocListener<AuthBloc, AuthState>(
+            listener: (context, state) {
+              if (state is AuthLogoutSuccess) {
+                // Using go() to clear the navigation stack and go to home
+                GoRouter.of(context).go('/');
+              }
+            },
+            child: Scaffold(
+              appBar: AppBar(
+                title: const Text('My Dashboard'),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.logout),
+                    tooltip: 'Logout',
+                    onPressed: () {
+                      context.read<AuthBloc>().add(AuthLogoutRequested());
+                    },
+                  ),
+                ],
+              ),
+              body: widgetOptions.elementAt(_selectedIndex),
+              bottomNavigationBar: BottomNavigationBar(
+                items: navItems,
+                currentIndex: _selectedIndex,
+                selectedItemColor: Colors.blue[800],
+                unselectedItemColor: Colors.grey,
+                onTap: _onItemTapped,
+              ),
             ),
           );
         }
@@ -87,7 +112,16 @@ class _MyPropertiesView extends StatelessWidget {
   const _MyPropertiesView();
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('List of my properties will be here.'));
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Text(
+          'Feature to view your listed properties is coming soon.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      ),
+    );
   }
 }
 
@@ -95,7 +129,16 @@ class _AddPropertyView extends StatelessWidget {
   const _AddPropertyView();
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Form to add a new property will be here.'));
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Text(
+          'Feature to add a new property is coming soon.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      ),
+    );
   }
 }
 
@@ -125,6 +168,20 @@ class _ProfileView extends StatelessWidget {
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.green[800]),
             ),
           ),
+        ),
+        const SizedBox(height: 24),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.add_shopping_cart),
+          label: const Text('Purchase Ad Package'),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+          onPressed: () {
+            // TODO: Create and navigate to the purchase screen
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Purchase screen coming soon!')),
+            );
+          },
         ),
       ],
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:waisaka_property_mobile/features/article/data/models/article.dart';
 import 'package:waisaka_property_mobile/features/article/data/repositories/article_repository.dart';
+import 'package:waisaka_property_mobile/features/gemini/data/repositories/gemini_repository.dart';
 import 'package:waisaka_property_mobile/features/property/data/models/property.dart';
 import 'package:waisaka_property_mobile/features/property/data/repositories/property_repository.dart';
 
@@ -11,14 +12,18 @@ part 'home_state.dart';
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
   final PropertyRepository _propertyRepository;
   final ArticleRepository _articleRepository;
+  final GeminiRepository _geminiRepository;
 
   HomeBloc({
     required PropertyRepository propertyRepository,
     required ArticleRepository articleRepository,
+    required GeminiRepository geminiRepository,
   })  : _propertyRepository = propertyRepository,
         _articleRepository = articleRepository,
+        _geminiRepository = geminiRepository,
         super(HomeInitial()) {
     on<HomeDataFetched>(_onHomeDataFetched);
+    on<VoiceCommandSubmitted>(_onVoiceCommandSubmitted);
   }
 
   Future<void> _onHomeDataFetched(
@@ -39,6 +44,23 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       emit(HomeLoadSuccess(properties: properties, articles: articles));
     } catch (e) {
       emit(HomeLoadFailure(error: e.toString()));
+    }
+  }
+
+  Future<void> _onVoiceCommandSubmitted(
+    VoiceCommandSubmitted event,
+    Emitter<HomeState> emit,
+  ) async {
+    try {
+      final result =
+          await _geminiRepository.sendCommand(event.command, 'home_search');
+      if (result.isNotEmpty && result != 'NO_KEYWORD') {
+        emit(HomeNavigateToSearch(query: result.trim()));
+      }
+      // If result is NO_KEYWORD or empty, do nothing and stay on the home screen
+    } catch (e) {
+      // Optionally emit a state to show a snackbar error for feedback
+      debugPrint('Voice command processing failed: $e');
     }
   }
 }

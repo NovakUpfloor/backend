@@ -2,46 +2,112 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 import 'package:waisaka_property_mobile/core/di/service_locator.dart';
 import 'package:waisaka_property_mobile/features/article/data/models/article.dart';
 import 'package:waisaka_property_mobile/features/home/presentation/bloc/home_bloc.dart';
 import 'package:waisaka_property_mobile/features/property/data/models/property.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final SpeechToText _speechToText = SpeechToText();
+  bool _isListening = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initSpeech();
+  }
+
+  void _initSpeech() async {
+    await _speechToText.initialize();
+  }
+
+  void _startListening() async {
+    await _speechToText.listen(
+      onResult: _onSpeechResult,
+      localeId: 'id_ID', // Set to Indonesian
+    );
+    setState(() {
+      _isListening = true;
+    });
+  }
+
+  void _stopListening() async {
+    await _speechToText.stop();
+    setState(() {
+      _isListening = false;
+    });
+  }
+
+  void _onSpeechResult(SpeechRecognitionResult result) {
+    if (result.finalResult) {
+      final command = result.recognizedWords;
+      debugPrint('Final speech result: $command');
+      if (command.isNotEmpty) {
+        context.read<HomeBloc>().add(VoiceCommandSubmitted(command));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => sl<HomeBloc>()..add(HomeDataFetched()),
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Waisaka Property'),
-          actions: [
-            TextButton(
-              onPressed: () => context.go('/login'),
-              child: const Text('Login', style: TextStyle(color: Colors.white)),
-            )
-          ],
-        ),
-        body: BlocBuilder<HomeBloc, HomeState>(
-          builder: (context, state) {
-            if (state is HomeLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (state is HomeLoadFailure) {
-              return Center(
-                child: Text('Failed to load data: ${state.error}'),
-              );
-            }
-            if (state is HomeLoadSuccess) {
-              return _HomeContentView(
-                properties: state.properties,
-                articles: state.articles,
-              );
-            }
-            return const Center(child: Text('Welcome!'));
-          },
+      child: BlocListener<HomeBloc, HomeState>(
+        listener: (context, state) {
+          if (state is HomeNavigateToSearch) {
+            // Ensure we are not in a build phase
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              context.go('/search?q=${state.query}');
+            });
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Waisaka Property'),
+            actions: [
+              TextButton(
+                onPressed: () => context.go('/register'),
+                child: const Text('Sign Up', style: TextStyle(color: Colors.white)),
+              ),
+              TextButton(
+                onPressed: () => context.go('/login'),
+                child: const Text('Login', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+          body: BlocBuilder<HomeBloc, HomeState>(
+            builder: (context, state) {
+              if (state is HomeLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (state is HomeLoadFailure) {
+                return Center(
+                  child: Text('Failed to load data: ${state.error}'),
+                );
+              }
+              if (state is HomeLoadSuccess) {
+                return _HomeContentView(
+                  properties: state.properties,
+                  articles: state.articles,
+                );
+              }
+              return const Center(child: Text('Welcome!'));
+            },
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: _speechToText.isNotListening ? _startListening : _stopListening,
+            tooltip: 'Voice Command',
+            child: Icon(_isListening ? Icons.mic_off : Icons.mic),
+          ),
         ),
       ),
     );

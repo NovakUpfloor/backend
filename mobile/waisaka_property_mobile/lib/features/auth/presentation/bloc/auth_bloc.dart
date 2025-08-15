@@ -15,6 +15,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthRegisterRequested>(_onRegisterRequested);
     on<FetchUserProfile>(_onFetchUserProfile);
+    on<FetchPackages>(_onFetchPackages);
+    on<AuthLogoutRequested>(_onLogoutRequested);
   }
 
   Future<void> _onLoginRequested(
@@ -44,6 +46,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         username: event.username,
         email: event.email,
         password: event.password,
+        packageId: event.packageId,
       );
       emit(AuthRegisterSuccess());
     } catch (e) {
@@ -61,6 +64,34 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(UserProfileLoaded(user: user));
     } catch (e) {
       emit(AuthFailure(error: e.toString()));
+    }
+  }
+
+  Future<void> _onFetchPackages(
+    FetchPackages event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthPackagesLoading());
+    try {
+      final packages = await _authRepository.fetchPackages();
+      emit(AuthPackagesLoadSuccess(packages: packages));
+    } catch (e) {
+      emit(AuthFailure(error: e.toString()));
+    }
+  }
+
+  Future<void> _onLogoutRequested(
+    AuthLogoutRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    // No loading state needed for a quick action like logout
+    try {
+      await _authRepository.logout();
+      emit(AuthLogoutSuccess());
+    } catch (e) {
+      // Even if logout fails, we can still clear the local state
+      // and proceed as if it were successful on the client.
+      emit(AuthLogoutSuccess());
     }
   }
 }

@@ -8,10 +8,53 @@ import 'package:waisaka_property_mobile/features/gemini/presentation/bloc/gemini
 import 'package:waisaka_property_mobile/features/property/data/models/property.dart';
 import 'package:waisaka_property_mobile/features/property/presentation/bloc/property_detail_bloc.dart';
 
-class PropertyDetailScreen extends StatelessWidget {
+class PropertyDetailScreen extends StatefulWidget {
   final String propertyId;
 
   const PropertyDetailScreen({super.key, required this.propertyId});
+
+  @override
+  State<PropertyDetailScreen> createState() => _PropertyDetailScreenState();
+}
+
+class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
+
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      debugPrint('Could not launch $url');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not launch $url')),
+      );
+    }
+  }
+
+  void _handleAction(BuildContext context, String? action, Property property) {
+    // Agent info should ideally come from the API with the property details.
+    // Using a fallback for now. The `telepon` field from the property model should be used if available.
+    final agentWhatsapp = property.telepon ?? '6281292758175';
+    final agentPhone = property.telepon ?? '081292758175';
+
+    switch (action) {
+      case 'contact_whatsapp':
+        _launchUrl('https://wa.me/$agentWhatsapp?text=Halo, saya tertarik dengan properti ${property.namaProperty}');
+        break;
+      case 'contact_phone':
+        _launchUrl('tel:$agentPhone');
+        break;
+      case 'share_facebook':
+        _launchUrl('https://www.facebook.com/sharer/sharer.php?u=https://waisakaproperty.com/properti/${property.id}/${property.slugProperty}');
+        break;
+      case 'share_whatsapp':
+        final shareText = 'Check out this property: https://waisakaproperty.com/properti/${property.id}/${property.slugProperty}';
+        _launchUrl('https://wa.me/?text=${Uri.encodeComponent(shareText)}');
+        break;
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sorry, I did not understand that command.')),
+        );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +62,7 @@ class PropertyDetailScreen extends StatelessWidget {
       providers: [
         BlocProvider(
           create: (context) =>
-              sl<PropertyDetailBloc>()..add(FetchPropertyDetails(propertyId)),
+              sl<PropertyDetailBloc>()..add(FetchPropertyDetails(widget.propertyId)),
         ),
         BlocProvider(
           create: (context) => sl<GeminiBloc>(),
@@ -38,19 +81,30 @@ class PropertyDetailScreen extends StatelessWidget {
               return Center(child: Text('Error: ${state.error}'));
             }
             if (state is PropertyDetailLoadSuccess) {
-              return _PropertyDetailView(property: state.property);
+              return _PropertyDetailView(
+                property: state.property,
+                onAction: (action) => _handleAction(context, action, state.property),
+              );
             }
             return const Center(child: Text('Loading property...'));
           },
         ),
-        floatingActionButton: const _GeminiMicButton(),
+        floatingActionButton: _GeminiMicButton(
+          onAction: (action) {
+            final state = context.read<PropertyDetailBloc>().state;
+            if (state is PropertyDetailLoadSuccess) {
+              _handleAction(context, action, state.property);
+            }
+          },
+        ),
       ),
     );
   }
 }
 
 class _GeminiMicButton extends StatefulWidget {
-  const _GeminiMicButton();
+  final Function(String? action) onAction;
+  const _GeminiMicButton({required this.onAction});
 
   @override
   State<_GeminiMicButton> createState() => _GeminiMicButtonState();
@@ -60,18 +114,30 @@ class _GeminiMicButtonState extends State<_GeminiMicButton> {
   final SpeechToText _speechToText = SpeechToText();
   bool _isListening = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _initSpeech();
+  }
+
+  void _initSpeech() async {
+     await _speechToText.initialize();
+  }
+
   void _listen(BuildContext context) async {
     if (!_isListening) {
-      bool available = await _speechToText.initialize(
-        onStatus: (val) => debugPrint('onStatus: $val'),
-        onError: (val) => debugPrint('onError: $val'),
-      );
+      bool available = await _speechToText.initialize();
       if (available) {
         setState(() => _isListening = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Listening...')),
+        );
         _speechToText.listen(
+          localeId: 'id_ID',
           onResult: (val) {
-            if (val.hasConfidenceRating && val.confidence > 0) {
-              context.read<GeminiBloc>().add(SendCommandToGemini(
+            if (val.finalResult) {
+               setState(() => _isListening = false);
+               context.read<GeminiBloc>().add(SendCommandToGemini(
                     textCommand: val.recognizedWords,
                     pageContext: 'property_detail',
                   ));
@@ -89,18 +155,8 @@ class _GeminiMicButtonState extends State<_GeminiMicButton> {
   Widget build(BuildContext context) {
     return BlocListener<GeminiBloc, GeminiState>(
       listener: (context, state) {
-        if (state is GeminiLoading) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Listening...')),
-          );
-        }
         if (state is GeminiActionSuccess) {
-          final action = state.action['action'];
-          // Find the property from the other BLoC to use its data
-          final propertyState = context.read<PropertyDetailBloc>().state;
-          if (propertyState is PropertyDetailLoadSuccess) {
-             _handleAction(action, propertyState.property);
-          }
+          widget.onAction(state.action['action']);
         }
         if (state is GeminiFailure) {
            ScaffoldMessenger.of(context).showSnackBar(
@@ -115,49 +171,16 @@ class _GeminiMicButtonState extends State<_GeminiMicButton> {
       ),
     );
   }
-
-  void _handleAction(String? action, Property property) {
-    const agentWhatsapp = '6281292758175';
-    const agentPhone = '081292758175';
-
-    switch (action) {
-      case 'contact_whatsapp':
-        _launchUrl('https://wa.me/$agentWhatsapp?text=Halo, saya tertarik dengan properti ${property.namaProperty}');
-        break;
-      case 'contact_phone':
-        _launchUrl('tel:$agentPhone');
-        break;
-      case 'share_facebook':
-         _launchUrl('https://www.facebook.com/sharer/sharer.php?u=https://waisakaproperty.com/properti/${property.id}/${property.namaProperty.replaceAll(' ', '-')}');
-        break;
-      case 'share_whatsapp':
-        final shareText = 'Check out this property: https://waisakaproperty.com/properti/${property.id}/${property.namaProperty.replaceAll(' ', '-')}';
-        _launchUrl('https://wa.me/?text=${Uri.encodeComponent(shareText)}');
-        break;
-      default:
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sorry, I did not understand that command.')),
-        );
-    }
-  }
-
-   Future<void> _launchUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      debugPrint('Could not launch $url');
-    }
-  }
 }
 
 class _PropertyDetailView extends StatelessWidget {
   final Property property;
-  const _PropertyDetailView({required this.property});
+  final Function(String? action) onAction;
+
+  const _PropertyDetailView({required this.property, required this.onAction});
 
   @override
   Widget build(BuildContext context) {
-    const agentWhatsapp = '6281292758175';
-    const agentPhone = '081292758175';
-
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,7 +222,7 @@ class _PropertyDetailView extends StatelessWidget {
                       child: ElevatedButton.icon(
                         icon: const Icon(Icons.call),
                         label: const Text('Call Agent'),
-                        onPressed: () => _launchUrl('tel:$agentPhone'),
+                        onPressed: () => onAction('contact_phone'),
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
                       ),
                     ),
@@ -208,7 +231,7 @@ class _PropertyDetailView extends StatelessWidget {
                       child: ElevatedButton.icon(
                         icon: const Icon(Icons.chat),
                         label: const Text('WhatsApp'),
-                        onPressed: () => _launchUrl('https://wa.me/$agentWhatsapp?text=Halo, saya tertarik dengan properti ${property.namaProperty}'),
+                        onPressed: () => onAction('contact_whatsapp'),
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                       ),
                     ),
@@ -217,29 +240,30 @@ class _PropertyDetailView extends StatelessWidget {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                     Expanded(
+                    Expanded(
                       child: OutlinedButton.icon(
                         icon: const Icon(Icons.facebook),
-                        label: const Text('Share'),
-                        onPressed: () => _launchUrl('https://www.facebook.com/sharer/sharer.php?u=https://waisakaproperty.com/properti/${property.id}/${property.namaProperty.replaceAll(' ', '-')}'),
+                        label: const Text('Facebook'),
+                        onPressed: () => onAction('share_facebook'),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.message), // Generic message icon for WhatsApp
+                        label: const Text('WhatsApp'),
+                        onPressed: () => onAction('share_whatsapp'),
                       ),
                     ),
                   ],
-                )
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 60), // Space for the FAB
+          const SizedBox(height: 80), // Space for the FAB
         ],
       ),
     );
-  }
-
-  Future<void> _launchUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      debugPrint('Could not launch $url');
-    }
   }
 }
 

@@ -17,6 +17,7 @@ void setupServiceLocator() {
   sl.registerFactory(() => HomeBloc(
         propertyRepository: sl(),
         articleRepository: sl(),
+        geminiRepository: sl(),
       ));
   sl.registerFactory(() => PropertyDetailBloc(propertyRepository: sl()));
   sl.registerFactory(() => GeminiBloc(geminiRepository: sl()));

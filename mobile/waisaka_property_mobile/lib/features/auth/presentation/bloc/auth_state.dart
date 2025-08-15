@@ -26,3 +26,12 @@ class UserProfileLoaded extends AuthState {
   final User user;
   UserProfileLoaded({required this.user});
 }
+
+class AuthLogoutSuccess extends AuthState {}
+
+class AuthPackagesLoading extends AuthState {}
+
+class AuthPackagesLoadSuccess extends AuthState {
+  final List<Package> packages;
+  AuthPackagesLoadSuccess({required this.packages});
+}

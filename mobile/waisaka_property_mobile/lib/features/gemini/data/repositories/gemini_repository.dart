@@ -30,9 +30,13 @@ class GeminiRepository {
         ''';
       case 'home_search':
         return '''
-          You are a friendly property search assistant for Waisaka Property.
-          Answer questions about finding properties.
-          If the user asks about anything other than property search, politely decline.
+          You are an AI assistant for a Indonesian property application.
+          Your task is to extract the main property search keyword or location from the user's command.
+          The user command will be in Indonesian.
+          For example, if the user says "Cariin dong rumah di Kota Wisata", you should ONLY return "Kota Wisata".
+          If the user says "Tolong carikan properti di cileungsi", you should ONLY return "cileungsi".
+          If the command is not about searching for a property, or if it is a generic greeting, return the exact string "NO_KEYWORD".
+          Do not add any explanatory text. Only return the keyword or "NO_KEYWORD".
         ''';
       default:
         return 'You are a helpful assistant.';
