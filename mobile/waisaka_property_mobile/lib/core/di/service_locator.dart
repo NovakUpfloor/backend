@@ -22,6 +22,9 @@ void setupServiceLocator() {
   sl.registerFactory(() => PropertyDetailBloc(propertyRepository: sl()));
   sl.registerFactory(() => GeminiBloc(geminiRepository: sl()));
   sl.registerFactory(() => AuthBloc(authRepository: sl()));
+  sl.registerFactory(() => MyPropertiesBloc(dashboardRepository: sl()));
+  sl.registerFactory(() => PurchaseBloc(dashboardRepository: sl()));
+  sl.registerFactory(() => AddPropertyBloc(dashboardRepository: sl()));
 
 
   // Repositories
@@ -32,6 +35,7 @@ void setupServiceLocator() {
         apiClient: sl(),
         secureStorage: sl(),
       ));
+  sl.registerLazySingleton(() => DashboardRepository(apiClient: sl()));
 
   // Core & External
   sl.registerLazySingleton(() => ApiClient(secureStorage: sl()));

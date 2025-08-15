@@ -43,6 +43,23 @@ class ApiClient {
     }
   }
 
+  Future<Response> postMultipart(String path, {required FormData data}) async {
+    try {
+      final response = await _dio.post(
+        path,
+        data: data,
+        options: Options(
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
+      );
+      return response;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   Future<Response> post(String path, {dynamic data}) async {
     try {
       final response = await _dio.post(path, data: data);

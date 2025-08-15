@@ -54,11 +54,11 @@ Route::prefix('v1')->group(function () {
         Route::prefix('dashboard')->group(function () {
             Route::post('/purchase-package', [DashboardApiController::class, 'purchasePackage']);
             Route::get('/my-properties', [DashboardApiController::class, 'getMyProperties']);
+            Route::post('/property', [DashboardApiController::class, 'storeProperty']);
             // Route::get('/stats', [UserDashboardApiController::class, 'stats']);
             // Route::get('/profile', [UserDashboardApiController::class, 'getProfile']);
             // Route::post('/profile', [UserDashboardApiController::class, 'updateProfile']);
             // Route::post('/purchase', [UserDashboardApiController::class, 'purchasePackage']);
-            // Route::post('/property', [UserDashboardApiController::class, 'storeProperty']);
         });
 
         // --- Rute Khusus Admin ---
