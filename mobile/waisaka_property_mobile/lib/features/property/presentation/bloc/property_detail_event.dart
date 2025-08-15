@@ -1,0 +1,10 @@
+part of 'property_detail_bloc.dart';
+
+@immutable
+abstract class PropertyDetailEvent {}
+
+class FetchPropertyDetails extends PropertyDetailEvent {
+  final String propertyId;
+
+  FetchPropertyDetails(this.propertyId);
+}

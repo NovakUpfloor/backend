@@ -1,0 +1,49 @@
+name: waisaka_property_mobile
+description: "Mobile application for Waisaka Property."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  flutter_bloc: ^8.1.3
+
+  # Routing
+  go_router: ^12.1.1
+
+  # Networking
+  dio: ^5.3.3
+
+  # Local Storage
+  shared_preferences: ^2.2.2
+  flutter_secure_storage: ^9.0.0
+
+  # Voice Command & AI
+  speech_to_text: ^6.5.1
+  google_generative_ai: ^0.2.2
+
+  # Utilities
+  url_launcher: ^6.2.1
+  intl: ^0.18.1
+
+  # Dependency Injection
+  get_it: ^7.6.4
+
+  # Icons
+  cupertino_icons: ^1.0.2
+
+  # Image Picker
+  image_picker: ^1.0.7
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
