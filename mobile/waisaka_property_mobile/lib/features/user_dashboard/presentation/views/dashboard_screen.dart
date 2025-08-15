@@ -130,12 +130,7 @@ class _ProfileView extends StatelessWidget {
         ElevatedButton.icon(
           icon: const Icon(Icons.history),
           label: const Text('View Purchase History'),
-          onPressed: () {
-            // TODO: Navigate to Purchase History Screen
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Purchase History screen coming soon!')),
-            );
-          },
+          onPressed: () => context.go('/purchase-history'),
         ),
         const SizedBox(height: 8),
         TextButton.icon(
@@ -165,12 +160,7 @@ class _AdminDashboardView extends StatelessWidget {
             title: const Text('Purchase Confirmations'),
             subtitle: const Text('Approve or reject new package purchases.'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: Navigate to Purchase Confirmation Screen
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Purchase Confirmation screen coming soon!')),
-              );
-            },
+            onTap: () => context.go('/admin/purchase-confirmations'),
           ),
         ),
         Card(

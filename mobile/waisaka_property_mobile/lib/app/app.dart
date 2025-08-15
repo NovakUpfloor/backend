@@ -6,7 +6,9 @@ import 'package:waisaka_property_mobile/features/auth/presentation/views/login_s
 import 'package:waisaka_property_mobile/features/auth/presentation/views/register_screen.dart';
 import 'package:waisaka_property_mobile/features/home/presentation/views/home_screen.dart';
 import 'package:waisaka_property_mobile/features/property/presentation/views/property_detail_screen.dart';
+import 'package:waisaka_property_mobile/features/admin_dashboard/presentation/views/purchase_confirmation_screen.dart';
 import 'package:waisaka_property_mobile/features/user_dashboard/presentation/views/dashboard_screen.dart';
+import 'package:waisaka_property_mobile/features/user_dashboard/presentation/views/purchase_history_screen.dart';
 
 // Main App Widget
 class MyApp extends StatelessWidget {
@@ -84,6 +86,14 @@ final GoRouter _router = GoRouter(
         final article = state.extra as Article;
         return ArticleDetailScreen(article: article);
       },
+    ),
+    GoRoute(
+      path: '/purchase-history',
+      builder: (context, state) => const PurchaseHistoryScreen(),
+    ),
+    GoRoute(
+      path: '/admin/purchase-confirmations',
+      builder: (context, state) => const PurchaseConfirmationScreen(),
     ),
   ],
 );

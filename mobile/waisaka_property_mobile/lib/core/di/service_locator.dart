@@ -2,6 +2,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:waisaka_property_mobile/core/api/api_client.dart';
 import 'package:waisaka_property_mobile/features/article/data/repositories/article_repository.dart';
+import 'package:waisaka_property_mobile/features/admin_dashboard/data/repositories/admin_repository.dart';
+import 'package:waisaka_property_mobile/features/admin_dashboard/presentation/bloc/purchase_confirmation_bloc.dart';
 import 'package:waisaka_property_mobile/features/auth/data/repositories/auth_repository.dart';
 import 'package:waisaka_property_mobile/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:waisaka_property_mobile/features/gemini/data/repositories/gemini_repository.dart';
@@ -22,6 +24,8 @@ void setupServiceLocator() {
   sl.registerFactory(() => PropertyDetailBloc(propertyRepository: sl()));
   sl.registerFactory(() => GeminiBloc(geminiRepository: sl()));
   sl.registerFactory(() => AuthBloc(authRepository: sl()));
+  sl.registerFactory(() => PurchaseHistoryBloc(repository: sl()));
+  sl.registerFactory(() => PurchaseConfirmationBloc(repository: sl()));
 
 
   // Repositories
@@ -33,6 +37,8 @@ void setupServiceLocator() {
         secureStorage: sl(),
       ));
   sl.registerLazySingleton(() => PackageRepository(apiClient: sl()));
+  sl.registerLazySingleton(() => UserDashboardRepository(apiClient: sl()));
+  sl.registerLazySingleton(() => AdminRepository(apiClient: sl()));
 
   // Core & External
   sl.registerLazySingleton(() => ApiClient(secureStorage: sl()));
