@@ -1,0 +1,1 @@
+part of 'gemini_bloc.dart'; @immutable abstract class GeminiEvent {} class SendCommandToGemini extends GeminiEvent { final String textCommand; final String pageContext; SendCommandToGemini({required this.textCommand, required this.pageContext}); }
