@@ -1,0 +1,1 @@
+part of 'purchase_confirmation_bloc.dart'; @immutable abstract class PurchaseConfirmationEvent {} class FetchConfirmations extends PurchaseConfirmationEvent {} class UpdateConfirmationStatus extends PurchaseConfirmationEvent { final int transactionId; final String status; UpdateConfirmationStatus({required this.transactionId, required this.status}); }
