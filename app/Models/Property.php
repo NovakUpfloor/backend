@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 class Property extends Model
 {
 
-	protected $table 		= "property_tb";
+	protected $table 		= "property_db";
 	protected $primaryKey 	= 'id_property';
 
     // listing

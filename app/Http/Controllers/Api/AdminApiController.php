@@ -96,13 +96,38 @@ class AdminApiController extends Controller
     }
     
     /**
-     * Mengambil daftar semua agen (staff).
+     * Mengambil data ringkasan untuk dashboard admin.
+     */
+    public function getDashboardData()
+    {
+        $total_agents = DB::table('staff')->where('status_staff', 'Ya')->count();
+        $pending_transactions = DB::table('transaksi_paket')->where('status_pembayaran', 'pending')->count();
+        $total_properties = DB::table('property_db')->count();
+
+        $agents = DB::table('staff')
+            ->select('id_staff', 'nama_staff', 'email', 'status_staff', 'total_kuota_iklan', 'sisa_kuota_iklan')
+            ->where('status_staff', 'Ya')
+            ->orderBy('nama_staff', 'asc')
+            ->get();
+
+        return response()->json([
+            'summary' => [
+                'total_agents' => $total_agents,
+                'pending_transactions' => $pending_transactions,
+                'total_properties' => $total_properties,
+            ],
+            'agents' => $agents,
+        ]);
+    }
+
+    /**
+     * Mengambil daftar semua agen (staff) - (Fungsi terpisah jika diperlukan).
      */
     public function getAgents()
     {
         $agents = DB::table('staff')
             ->join('users', 'staff.id_user', '=', 'users.id_user')
-            ->select('staff.id_staff', 'staff.nama_staff', 'staff.email', 'staff.status_staff', 'staff.sisa_kuota', 'users.username')
+            ->select('staff.id_staff', 'staff.nama_staff', 'staff.email', 'staff.status_staff', 'staff.sisa_kuota_iklan', 'users.username')
             ->orderBy('staff.nama_staff', 'asc')
             ->get();
         return response()->json(['data' => $agents]);

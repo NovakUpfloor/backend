@@ -54,37 +54,66 @@ class PropertyApiController extends Controller
     }
 	
 	    /**
-     * --- FUNGSI BARU UNTUK PENCARIAN ---
-     * Menampilkan daftar properti berdasarkan filter.
+     * Mengambil daftar properti terbaru (misal: 10 properti).
      */
-    public function search(Request $request)
+    public function latest()
     {
         $myproperty = new PropertyModel();
-        $query = $myproperty->semua_raw(); // Mengambil query builder dasar
-
-        // Filter berdasarkan lokasi jika ada
-        if ($request->has('location')) {
-            $location = strtolower($request->input('location'));
-            $query->where(function ($q) use ($location) {
-                $q->where(DB::raw('LOWER(kabupaten.nama)'), 'like', '%' . $location . '%')
-                  ->orWhere(DB::raw('LOWER(provinsi.nama)'), 'like', '%' . $location . '%');
-            });
-        }
-
-        // Filter berdasarkan tipe properti jika ada
-        if ($request->has('type')) {
-             $type = strtolower($request->input('type'));
-             // Anda mungkin perlu mencocokkan dengan slug atau nama kategori di sini
-             $query->whereHas('kategori_property', function ($q) use ($type) {
-                $q->where(DB::raw('LOWER(nama_kategori_property)'), 'like', '%' . $type . '%');
-             });
-        }
-
-        $properties = $query->orderBy('tanggal', 'desc')->paginate(10);
+        $properties = $myproperty->semua_raw(['property_db.status' => 1])
+                        ->orderBy('tanggal', 'desc')
+                        ->limit(10)
+                        ->get();
 
         return response()->json([
             'success' => true,
             'data' => $properties
         ]);
+    }
+
+    /**
+     * Mencari properti dengan filter lanjutan.
+     */
+    public function search(Request $request)
+    {
+        $myproperty = new PropertyModel();
+        $query = $myproperty->semua_raw(['property_db.status' => 1]);
+
+        // Filter berdasarkan tipe (Jual/Sewa)
+        if ($request->has('tipe') && in_array($request->tipe, ['Jual', 'Sewa'])) {
+            $query->where('property_db.tipe', $request->tipe);
+        }
+
+        // Filter berdasarkan kata kunci
+        if ($request->has('keyword')) {
+            $keyword = $request->keyword;
+            $query->where(function($q) use ($keyword) {
+                $q->where('property_db.nama_property', 'like', '%' . $keyword . '%')
+                  ->orWhere('property_db.isi', 'like', '%' . $keyword . '%')
+                  ->orWhere('kabupaten.nama', 'like', '%' . $keyword . '%')
+                  ->orWhere('provinsi.nama', 'like', '%' . $keyword . '%');
+            });
+        }
+
+        // Filter harga
+        if ($request->has('min_price')) {
+            $query->where('property_db.harga', '>=', $request->min_price);
+        }
+        if ($request->has('max_price')) {
+            $query->where('property_db.harga', '<=', $request->max_price);
+        }
+
+        // Filter kamar tidur
+        if ($request->has('bedrooms')) {
+            $query->where('property_db.kamar_tidur', '=', $request->bedrooms);
+        }
+
+        // Filter kamar mandi
+        if ($request->has('bathrooms')) {
+            $query->where('property_db.kamar_mandi', '=', $request->bathrooms);
+        }
+
+        $properties = $query->orderBy('property_db.tanggal', 'desc')->paginate(15);
+
+        return response()->json($properties);
     }
 }

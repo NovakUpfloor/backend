@@ -12,11 +12,46 @@ Route::prefix('v1')->group(function () {
     // Rute Publik (tidak perlu login)
     Route::post('/auth/register', [AuthApiController::class, 'register']);
     Route::post('/auth/login', [AuthApiController::class, 'login']);
+    Route::get('/auth/verify/{token}', 'App\Http\Controllers\Api\AuthApiController@verifyEmail')->name('api.verification.verify');
+
+
+    // Rute Konten Utama (Properti & Artikel)
+    Route::get('/properties/latest', 'App\Http\Controllers\Api\PropertyApiController@latest');
+    Route::get('/properties/search', 'App\Http\Controllers\Api\PropertyApiController@search');
+    Route::get('/properties/{id}', 'App\Http\Controllers\Api\PropertyApiController@show');
+    Route.get('/articles/latest', 'App\Http\Controllers\Api\ArticleApiController@latest');
+    Route.get('/articles/{id}', 'App\Http\Controllers\Api\ArticleApiController@show');
+
+    // Rute publik untuk paket
+    Route::get('/packages', 'App\Http\Controllers\Api\PackageApiController@index');
 
     // Rute Terproteksi (wajib login/mengirim token)
     Route::middleware('auth:sanctum')->group(function () {
-        Route::post('/auth/logout', [AuthApiController::class, 'logout']);
-        // Endpoint lain yang butuh login akan ditambahkan di sini
+        Route::post('/auth/logout', 'App\Http\Controllers\Api\AuthApiController@logout');
+
+        // User & Profile Routes
+        Route::get('/user/profile', 'App\Http\Controllers\Api\UserApiController@profile');
+        Route::post('/user/profile', 'App\Http\Controllers\Api\UserApiController@updateProfile');
+
+        // Package Purchase Route
+        Route::post('/packages/purchase', 'App\Http\Controllers\Api\PackageApiController@purchase');
+
+        // History & Dashboard
+        Route::get('/user/purchases', 'App\Http\Controllers\Api\UserApiController@purchaseHistory');
+        Route::get('/user/dashboard', 'App\Http\Controllers\Api\UserApiController@dashboard');
+
+        // Gemini Route
+        Route::post('/gemini/command', 'App\Http\Controllers\Api\GeminiApiController@processCommand');
+
+        // Admin Routes
+        Route::prefix('admin')->middleware('admin')->group(function () {
+            Route::get('/dashboard', 'App\Http\Controllers\Api\AdminApiController@getDashboardData');
+            Route::get('/transactions', 'App\Http\Controllers\Api\AdminApiController@getTransactions');
+            Route::post('/transactions/{id}/update-status', 'App\Http\Controllers\Api\AdminApiController@updateTransactionStatus');
+            Route::get('/agents', 'App\Http\Controllers\Api\AdminApiController@getAgents');
+            Route::post('/properties/{id}/toggle-status', 'App\Http\Controllers\Api\AdminApiController@togglePropertyStatus');
+            Route::get('/analytics', 'App\Http\Controllers\Api\AdminApiController@getVisitorAnalytics');
+        });
     });
 });
 
